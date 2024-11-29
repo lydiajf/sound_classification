@@ -8,6 +8,7 @@ from tqdm import tqdm
 import whisper
 from models.models import Transformer
 import numpy as np
+import wandb
 
 # i want it to be split into batches
 # audio class
@@ -16,10 +17,21 @@ from datasets import load_dataset
 
 ds = load_dataset("danavery/urbansound8K", cache_dir="./data")['train']
 
+def split_dataset(dataset, train_ratio=0.7, val_ratio=0.2, test_ratio=0.1):
+    
+    # Splits the dataset into training, validation, and test sets.
 
-# ds_train = ds[:70%]
-# ds_val = ds[70%:90%]
-# ds_test = ds[90%:100%]
+    assert train_ratio + val_ratio + test_ratio == 1, "Ratios must sum to 1"
+
+    total_size = len(dataset)
+    train_size = int(total_size * train_ratio)
+    val_size = int(total_size * val_ratio)
+
+    ds_train = dataset[:train_size]
+    ds_val = dataset[train_size:train_size + val_size]
+    ds_test = dataset[train_size + val_size:]
+
+    return ds_train, ds_val, ds_test
 
 # Preprocess and Save Function
 def preprocess(dataset, save_dir, target_sample_rate=16000, max_duration=10):
@@ -91,8 +103,10 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('device being used',device)
 
+    ds_train, ds_val, ds_test = split_dataset(ds)
+
     # Load the preprocessed data
-    spectrograms, labels = preprocess(ds, save_dir)
+    spectrograms, labels = preprocess(ds_train, save_dir)
     
     # Prepare data for DataLoader
     class AudioDataset(torch.utils.data.Dataset):
@@ -160,6 +174,25 @@ if __name__ == '__main__':
         print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}")
     
     # Save the trained model
-    torch.save(model.state_dict(), 'models/urban_sound_model.pth')
+    torch.save(model.state_dict(), 'models/urban_sound_model_with_splits.pth')
 
-model.eval()
+
+    spectrograms_val, labels_val = preprocess(ds_val, save_dir)
+
+    model.eval()
+
+    with torch.no_grad():  # Disable gradient calculation for evaluation
+        correct_predictions = 0
+        total_samples = 0
+
+        for mel, label in zip(spectrograms_val, labels_val):
+            mel = mel.unsqueeze(0)  # Add batch dimension if necessary
+            output = model(mel)  # Forward pass
+
+            # Assuming you have a way to get predicted class from output
+            predicted = torch.argmax(output, dim=1)
+            correct_predictions += (predicted == label).sum().item()
+            total_samples += label.size(0)
+
+        accuracy = correct_predictions / total_samples
+        print(f"Validation Accuracy: {accuracy:.4f}")
