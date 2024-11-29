@@ -16,6 +16,11 @@ from datasets import load_dataset
 
 ds = load_dataset("danavery/urbansound8K", cache_dir="./data")['train']
 
+
+# ds_train = ds[:70%]
+# ds_val = ds[70%:90%]
+# ds_test = ds[90%:100%]
+
 # Preprocess and Save Function
 def preprocess(dataset, save_dir, target_sample_rate=16000, max_duration=10):
     save_dir = Path(save_dir)
@@ -84,7 +89,7 @@ if __name__ == '__main__':
     num_encoder_layers = 6  # Number of encoder layers
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    
+    print('device being used',device)
 
     # Load the preprocessed data
     spectrograms, labels = preprocess(ds, save_dir)
@@ -157,3 +162,4 @@ if __name__ == '__main__':
     # Save the trained model
     torch.save(model.state_dict(), 'models/urban_sound_model.pth')
 
+model.eval()

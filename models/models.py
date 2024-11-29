@@ -8,6 +8,8 @@ from models.decoder import Decoder2, MaskedAttention, CrossAttention, getPositio
 # normalisation of layers
 # batching
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 class AudioFeatureExtractor(torch.nn.Module):
     def __init__(self, emb_dim):
         super(AudioFeatureExtractor, self).__init__()
@@ -61,10 +63,11 @@ class Transformer(torch.nn.Module):
         # encoder_output = self.linear(encoder_output)
         x = self.feature_extractor(audio_input)  # x shape: [batch_size, emb_dim, time_steps]
         x = x.permute(0, 2, 1)  # x shape: [batch_size, time_steps, emb_dim]
-
+        x = x.to(device)
         # Positional Encoding
         batch_size, seq_len, emb_dim = x.size()
         pos_enc = getPositionEncoding(batch_size, seq_len, emb_dim)
+        pos_enc = pos_enc.to(device)
         encoder_input = x + pos_enc
 
         # Pass through encoder layers
