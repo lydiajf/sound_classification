@@ -137,6 +137,17 @@ if __name__ == '__main__':
         num_encoder_layers=num_encoder_layers,
         num_classes=num_classes
     ).to(device)
+
+    wandb.init(project='urban-sound-classification', config={
+    "learning_rate": learning_rate,
+    "epochs": epochs,
+    "batch_size": batch_size,
+    "num_classes": num_classes,
+    "emb_dim": emb_dim,
+    "num_heads": num_heads,
+    "hidden_dim_ff": hidden_dim_ff,
+    "num_encoder_layers": num_encoder_layers,
+    })
     
     # Define loss and optimizer
     criterion = nn.CrossEntropyLoss()
@@ -170,6 +181,8 @@ if __name__ == '__main__':
             optimizer.step()
             
             epoch_loss += loss.item()
+
+            wandb.log({'batch_loss': loss.item(), 'epoch': epoch+1})
         avg_loss = epoch_loss / len(dataloader)
         print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}")
     
@@ -184,6 +197,8 @@ if __name__ == '__main__':
     with torch.no_grad():  # Disable gradient calculation for evaluation
         correct_predictions = 0
         total_samples = 0
+        all_preds = []
+        all_labels = []
 
         for mel, label in zip(spectrograms_val, labels_val):
             mel = mel.unsqueeze(0)  # Add batch dimension if necessary
@@ -196,3 +211,13 @@ if __name__ == '__main__':
 
         accuracy = correct_predictions / total_samples
         print(f"Validation Accuracy: {accuracy:.4f}")
+
+        # Log validation loss and accuracy to wandb
+        wandb.log({'val_accuracy': accuracy, 'epoch': epoch+1})
+
+        # Create a table of predictions and true labels
+        table = wandb.Table(columns=['Predicted', 'True'])
+        for pred, true_label in zip(all_preds, all_labels):
+            table.add_data(pred, true_label)
+        # Log the table to wandb
+        wandb.log({'predictions': table})
