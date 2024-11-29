@@ -46,9 +46,14 @@ def preprocess(dataset, save_dir, target_sample_rate=16000, max_duration=10):
     
     max_length = target_sample_rate * max_duration  # Max length in samples
     
-    for example in tqdm(dataset, desc="Preprocessing Audio"):
-        audio_array = example['audio']['array']
-        label = example['classID'] 
+    audio = dataset['audio']
+    classID = dataset['classID']
+
+    for i, record in tqdm(enumerate(audio), desc="Preprocessing Audio"):
+        # audio_array = example['audio']['array']
+        # label = example['classID']
+        audio_array = record['array']
+        label = classID[i]
         
         audio_array = torch.tensor(audio_array).float()  # Shape: [1, num_samples]
 
